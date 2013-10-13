@@ -115,9 +115,9 @@ class Button extends StateComponent implements IFocusable {
 		
 		addChild(_label);
 
+		addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
 		addEventListener(MouseEvent.MOUSE_OVER, _onMouseOver);
 		addEventListener(MouseEvent.MOUSE_OUT, _onMouseOut);
-		addEventListener(MouseEvent.MOUSE_DOWN, _onMouseDown);
 		addEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
 		addEventListener(MouseEvent.CLICK, _onMouseClick);
 	}
@@ -138,6 +138,14 @@ class Button extends StateComponent implements IFocusable {
 	//******************************************************************************************
 	// Event handlers
 	//******************************************************************************************
+	public function onMouseDown(?event:MouseEvent):Void {
+		if (_allowSelection == true) {
+			_down = true;
+			state = STATE_DOWN;
+			Screen.instance.addEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
+		}
+	}
+
 	private function _onMouseOver(event:MouseEvent):Void {
 		if (_selected == false) {
 			if (event.buttonDown == false || _down == false) {
@@ -155,14 +163,6 @@ class Button extends StateComponent implements IFocusable {
 			} else {
 				//Screen.instance.addEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
 			}
-		}
-	}
-	
-	private function _onMouseDown(event:MouseEvent):Void {
-		if (_allowSelection == true) {
-			_down = true;
-			state = STATE_DOWN;
-			Screen.instance.addEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
 		}
 	}
 	

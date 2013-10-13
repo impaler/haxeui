@@ -37,6 +37,7 @@ class Progress extends Component implements IScrollable implements IDirectional 
 		_valueBgComp.id = "background";
 		_valueComp = new Component();
 		_valueComp.id = "value";
+		_valueComp.sprite.mouseEnabled = false;
 	}
 	
 	

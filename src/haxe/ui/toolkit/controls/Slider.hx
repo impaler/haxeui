@@ -34,13 +34,18 @@ class Slider extends Progress {
 		_thumb.remainPressed = true;
 		_thumb.addEventListener(MouseEvent.MOUSE_DOWN, _onMouseDown);
 		addChild(_thumb);
-		
+
+		addEventListener(MouseEvent.MOUSE_DOWN, _onBGMouseDown);
+
 		addEventListener(MouseEvent.MOUSE_WHEEL, _onMouseWheel);
 	}
 	
 	//******************************************************************************************
 	// Event handlers
 	//******************************************************************************************
+	private function _onBGMouseDown(event:MouseEvent):Void {
+	}
+
 	private function _onMouseDown(event:MouseEvent):Void {
 	}
 	

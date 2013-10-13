@@ -21,6 +21,15 @@ class VSlider extends Slider {
 	//******************************************************************************************
 	// Event handler overrides
 	//******************************************************************************************
+	private override function _onBGMouseDown(event:MouseEvent):Void {
+		if (!_thumb.hitTest(event.stageX, event.stageY)){
+			_thumb.y = event.localY - (_thumb.height*.5);
+			_thumb.onMouseDown();
+			_onMouseDown(event);
+			_onScreenMouseMove(event);
+		}
+	}
+
 	private override function _onMouseDown(event:MouseEvent):Void {
 		var ptStage:Point = new Point(event.stageX, event.stageY);
 		_mouseDownOffset = ptStage.y - _thumb.y;

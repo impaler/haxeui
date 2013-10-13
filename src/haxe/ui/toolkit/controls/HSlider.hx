@@ -21,6 +21,15 @@ class HSlider extends Slider {
 	//******************************************************************************************
 	// Event handler overrides
 	//******************************************************************************************
+	private override function _onBGMouseDown(event:MouseEvent):Void {
+		if (!_thumb.hitTest(event.stageX, event.stageY)){
+			_thumb.x = event.localX - (_thumb.width*.5);
+			_thumb.onMouseDown();
+			_onMouseDown(event);
+			_onScreenMouseMove(event);
+		}
+	}
+
 	private override function _onMouseDown(event:MouseEvent):Void {
 		var ptStage:Point = new Point(event.stageX, event.stageY);
 		_mouseDownOffset = ptStage.x - _thumb.x;
