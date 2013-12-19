@@ -4,6 +4,7 @@ import flash.events.Event;
 import haxe.ui.toolkit.controls.TabBar;
 import haxe.ui.toolkit.core.Component;
 import haxe.ui.toolkit.core.interfaces.IDisplayObject;
+import haxe.ui.toolkit.events.UIEvent;
 import haxe.ui.toolkit.layout.HorizontalLayout;
 import haxe.ui.toolkit.layout.VerticalLayout;
 
@@ -19,6 +20,7 @@ class TabView extends Component {
 		_tabs.percentWidth = 100;
 		_tabs.id = "tabs";
 		_tabs.addEventListener(Event.CHANGE, _onTabsChange);
+		_tabs.addEventListener(UIEvent.GLYPH_CLICK, _onGlyphClick);
 		addChild(_tabs);
 		
 		_stack = new Stack();
@@ -34,6 +36,12 @@ class TabView extends Component {
 		_stack.selectedIndex = _tabs.selectedIndex;
 	}
 	
+	private function _onGlyphClick(event:UIEvent):Void {
+		var newEvent:UIEvent = new UIEvent(UIEvent.GLYPH_CLICK);
+		newEvent.data = event.data;
+		dispatchEvent(newEvent);
+	}
+	
 	//******************************************************************************************
 	// Overrides
 	//******************************************************************************************
@@ -44,10 +52,12 @@ class TabView extends Component {
 		} else {
 			r = _stack.addChild(child);
 			var label:String = "";
+			var styleName:String = null;
 			if (Std.is(child, Component)) {
 				label = cast(child, Component).text;
+				styleName = cast(child, Component).styleName;
 			}
-			_tabs.addTab(label);
+			_tabs.addTab(label).styleName = styleName;
 		}
 		return r;
 	}
@@ -83,7 +93,7 @@ class TabView extends Component {
 	}
 	
 	private function get_pageCount():Int {
-		return _stack.children.length;
+		return _stack.numChildren;
 	}
 	
 	//******************************************************************************************
@@ -91,5 +101,10 @@ class TabView extends Component {
 	//******************************************************************************************
 	public function setTabText(index:Int, text:String):Void {
 		_tabs.setTabText(index, text);
+	}
+	
+	public function removeTab(index:Int):Void {
+		_stack.removeChildAt(index);
+		_tabs.removeTab(index);
 	}
 }

@@ -7,14 +7,17 @@ import flash.geom.Point;
 import flash.geom.Rectangle;
 import haxe.ui.toolkit.controls.HScroll;
 import haxe.ui.toolkit.controls.VScroll;
+import haxe.ui.toolkit.core.base.State;
 import haxe.ui.toolkit.core.Component;
 import haxe.ui.toolkit.core.interfaces.IDisplayObject;
 import haxe.ui.toolkit.core.interfaces.IEventDispatcher;
 import haxe.ui.toolkit.core.interfaces.InvalidationFlag;
+import haxe.ui.toolkit.core.Screen;
+import haxe.ui.toolkit.core.StateComponent;
 import haxe.ui.toolkit.layout.DefaultLayout;
 import haxe.ui.toolkit.util.TypeParser;
 
-class ScrollView extends Component {
+class ScrollView extends StateComponent {
 	private var _hscroll:HScroll;
 	private var _vscroll:VScroll;
 	
@@ -29,7 +32,7 @@ class ScrollView extends Component {
 	
 	public function new() {
 		super();
-		
+		addStates([State.NORMAL, State.DISABLED]);
 		_layout = new ScrollViewLayout();
 		_eventTarget = new Sprite();
 		_eventTarget.visible = false;
@@ -43,7 +46,9 @@ class ScrollView extends Component {
 		
 		if (_style != null) {
 			_autoHideScrolls = _style.autoHideScrolls;
-			cast(_layout, ScrollViewLayout).inlineScrolls = _style.inlineScrolls;
+			if (Reflect.getProperty(_layout, "inlineScrolls") != null) {
+				Reflect.setProperty(_layout, "inlineScrolls", _style.inlineScrolls);
+			}
 		}
 	}
 	
@@ -155,16 +160,18 @@ class ScrollView extends Component {
 	// Overridables
 	//******************************************************************************************
 	public override function invalidate(type:Int = InvalidationFlag.ALL):Void {
-		super.invalidate();
-		if (!_ready) {
+		if (!_ready || _invalidating) {
 			return;
 		}
 
+		super.invalidate(type);
+		_invalidating = true;
 		if (type & InvalidationFlag.SIZE == InvalidationFlag.SIZE) {
 			checkScrolls();
 			updateScrollRect();
 			resizeEventTarget();
 		}
+		_invalidating = false;
 	}
 	
 	//******************************************************************************************
@@ -205,24 +212,24 @@ class ScrollView extends Component {
 	
 	private function _onMouseDown(event:MouseEvent):Void {
 		var inScroll:Bool = false;
-		if (_vscroll != null) {
+		if (_vscroll != null && _vscroll.visible == true) {
 			inScroll = _vscroll.hitTest(event.stageX, event.stageY);
 		}
-		if (_hscroll != null && inScroll == false) {
+		if (_hscroll != null && _hscroll.visible == true && inScroll == false) {
 			inScroll = _hscroll.hitTest(event.stageX, event.stageY);
 		}
 		
 		var content:IDisplayObject = getChildAt(0); // assume first child is content
-		if (content != null) {
-			if (inScroll == false || content.width > layout.usableWidth || content.height > layout.usableHeight) {
+		if (content != null && inScroll == false) {
+			if (content.width > layout.usableWidth || content.height > layout.usableHeight) {
 				_downPos = new Point(event.stageX, event.stageY);
-				root.addEventListener(MouseEvent.MOUSE_MOVE, _onMouseMove);
-				root.addEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
+				Screen.instance.addEventListener(MouseEvent.MOUSE_UP, _onScreenMouseUp);
+				Screen.instance.addEventListener(MouseEvent.MOUSE_MOVE, _onScreenMouseMove);
 			}
 		}
 	}
 	
-	private function _onMouseMove(event:MouseEvent):Void {
+	private function _onScreenMouseMove(event:MouseEvent):Void {
 		if (_downPos != null) {
 			var ypos:Float = event.stageY - _downPos.y;
 			var xpos:Float = event.stageX - _downPos.x;
@@ -254,11 +261,11 @@ class ScrollView extends Component {
 		}
 	}
 	
-	private function _onMouseUp(event:MouseEvent):Void {
+	private function _onScreenMouseUp(event:MouseEvent):Void {
 		_eventTarget.visible = false;
 		_downPos = null;
-		root.removeEventListener(MouseEvent.MOUSE_MOVE, _onMouseMove);
-		root.removeEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
+		Screen.instance.removeEventListener(MouseEvent.MOUSE_UP, _onScreenMouseUp);
+		Screen.instance.removeEventListener(MouseEvent.MOUSE_MOVE, _onScreenMouseMove);
 		
 		if (_hscroll != null && _showHScroll == true && _autoHideScrolls == true) {
 			_hscroll.visible = false;
@@ -352,6 +359,7 @@ class ScrollView extends Component {
 			}
 			
 			if (invalidateLayout) {
+				_invalidating = false;
 				invalidate(InvalidationFlag.LAYOUT);
 			}
 		}

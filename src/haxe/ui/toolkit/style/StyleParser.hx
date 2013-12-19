@@ -2,6 +2,7 @@ package haxe.ui.toolkit.style;
 
 import flash.geom.Rectangle;
 import flash.Lib;
+import haxe.ui.toolkit.hscript.ScriptUtils;
 import haxe.ui.toolkit.util.FilterParser;
 
 class StyleParser {
@@ -34,6 +35,13 @@ class StyleParser {
 					var propValue = StringTools.trim(temp[1]);
 					if (temp.length == 3) {
 						propValue += ":" + StringTools.trim(temp[2]);
+					}
+					
+					propValue = StringTools.replace(propValue, "\"", "");
+					propValue = StringTools.replace(propValue, "'", "");
+					if (ScriptUtils.isScript(propValue) && !ScriptUtils.isCssException(propName)) {
+						style.addDynamicValue(propName, propValue);
+						continue;
 					}
 					
 					if (propName == "width" && propValue.indexOf("%") != -1) { // special case for width

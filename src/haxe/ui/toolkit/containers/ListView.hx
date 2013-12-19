@@ -3,6 +3,7 @@ package haxe.ui.toolkit.containers;
 import flash.events.Event;
 import flash.events.MouseEvent;
 import flash.Lib;
+import flash.ui.Mouse;
 import haxe.ui.toolkit.controls.Button;
 import haxe.ui.toolkit.controls.HProgress;
 import haxe.ui.toolkit.controls.HSlider;
@@ -17,6 +18,7 @@ import haxe.ui.toolkit.core.interfaces.InvalidationFlag;
 import haxe.ui.toolkit.core.StateComponent;
 import haxe.ui.toolkit.data.ArrayDataSource;
 import haxe.ui.toolkit.data.IDataSource;
+import haxe.ui.toolkit.events.ListViewEvent;
 import haxe.ui.toolkit.layout.DefaultLayout;
 
 class ListView extends ScrollView implements IDataComponent {
@@ -25,6 +27,7 @@ class ListView extends ScrollView implements IDataComponent {
 	private var _content:VBox;
 	
 	private var _selectedItems:Array<ListViewItem>;
+	private var _lastSelection:Int = -1;
 	
 	public function new() {
 		super();
@@ -64,6 +67,8 @@ class ListView extends ScrollView implements IDataComponent {
 	public var listSize(get, null):Int;
 	public var itemHeight(get, null):Float;
 	public var selectedItems(get, null):Array<ListViewItem>;
+	public var selectedIndex(get, set):Int;
+	public var content(get, null):Component;
 	
 	private function get_listSize():Int {
 		return _content.children.length;
@@ -74,13 +79,17 @@ class ListView extends ScrollView implements IDataComponent {
 			return 0;
 		}
 		var n:Int = 0;
-		var cy:Float = 0;
+		var cy:Float = _content.layout.padding.top + _content.layout.padding.bottom;
+		var scy:Int = _content.layout.spacingY;
 		for (child in _content.children) {
-			cy += child.height;
+			cy += child.height + scy;
 			n++;
 			if (n > 100) {
 				break;
 			}
+		}
+		if (n > 0) {
+			cy -= scy;
 		}
 		return (cy / n);
 	}
@@ -93,6 +102,33 @@ class ListView extends ScrollView implements IDataComponent {
 		return _selectedItems;
 	}
 
+	private function get_selectedIndex():Int {
+		var index:Int = -1;
+		if (_selectedItems != null && _selectedItems.length > 0) {
+			index = Lambda.indexOf(_content.children, _selectedItems[0]);
+		}
+		return index;
+	}
+	
+	private function set_selectedIndex(value:Int):Int {
+		if (_ready == false) {
+			return value;
+		}
+		var item:ListViewItem = cast(_content.getChildAt(value), ListViewItem);
+		if (item != null) {
+			handleListSelection(item, null);
+		}
+		return value;
+	}
+	
+	private function get_content():Component {
+		var c:Component = null;
+		if (numChildren > 0) {
+			c = cast(getChildAt(0), Component);
+		}
+		return c;
+	}
+	
 	//******************************************************************************************
 	// IDataComponent
 	//******************************************************************************************
@@ -118,6 +154,7 @@ class ListView extends ScrollView implements IDataComponent {
 		if (_ready == true) {
 			syncUI();
 		}
+		_lastSelection = -1;
 		return value;
 	}
 	
@@ -175,7 +212,7 @@ class ListView extends ScrollView implements IDataComponent {
 		if (data == null) {
 			return;
 		}
-		
+
 		var itemData:Dynamic = data;
 		if (Std.is(data, String)) {
 			itemData = { };
@@ -190,6 +227,7 @@ class ListView extends ScrollView implements IDataComponent {
 		itemData.dataSource = (itemData.dataSource != null) ? itemData.dataSource : null;
 		
 		var item:ListViewItem = new ListViewItem(this);
+		item.data = itemData;
 		item.text = itemData.text;
 		item.subtext = itemData.subtext;
 		item.icon = itemData.icon;
@@ -211,14 +249,22 @@ class ListView extends ScrollView implements IDataComponent {
 	}
 	
 	private function removeListViewItem(index:Int):Void {
-		trace("remove item index = " + index);
+		var item:ListViewItem = cast(_content.getChildAt(index), ListViewItem);
+		var sIndex:Int = Lambda.indexOf(_selectedItems, item);
+		if (sIndex != -1) {
+			_selectedItems.remove(item);
+		}
+		if (item != null) {
+			_content.removeChild(item);
+			invalidate(InvalidationFlag.SIZE);
+		}
 	}
 	
-	public function handleListSelection(item:ListViewItem, event:Event):Void {
+	public function handleListSelection(item:ListViewItem, event:Event, raiseEvent:Bool = true):Void {
 		var shiftPressed:Bool = false;
 		var ctrlPressed:Bool = false;
 		
-		if (Std.is(event, MouseEvent)) {
+		if (event != null && Std.is(event, MouseEvent)) {
 			var mouseEvent:MouseEvent = cast(event, MouseEvent);
 			shiftPressed = mouseEvent.shiftKey;
 			ctrlPressed = mouseEvent.ctrlKey;
@@ -244,13 +290,63 @@ class ListView extends ScrollView implements IDataComponent {
 			_selectedItems.push(item);
 			item.state = ListViewItem.STATE_SELECTED;
 		}
+
+		ensureVisible(item);
 		
-		var event:Event = new Event(Event.CHANGE);
-		dispatchEvent(event);
+		if (raiseEvent == true) {
+			var event:Event = new Event(Event.CHANGE);
+			dispatchEvent(event);
+		}
+	}
+	
+	public function handleClick(item:ListViewItem, event:MouseEvent):Void {
+		var index:Int = Lambda.indexOf(_content.children, item);
+		if (_lastSelection == index) {
+			var event:MouseEvent = new MouseEvent(MouseEvent.DOUBLE_CLICK);
+			dispatchEvent(event);
+			_lastSelection = -1;
+		} else {
+			_lastSelection = index;
+		}
 	}
 	
 	public function isSelected(item:ListViewItem):Bool {
 		return Lambda.indexOf(_selectedItems, item) != -1;
+	}
+	
+	//******************************************************************************************
+	// Helpers
+	//******************************************************************************************
+	public function getItemIndex(item:ListViewItem):Int {
+		var index:Int = -1;
+		if (item != null) {
+			index = Lambda.indexOf(_content.children, item);
+		}
+		return index;
+	}
+	
+	public function setSelectedIndexNoEvent(value:Int):Int {
+		if (_ready == false) {
+			return value;
+		}
+		var item:ListViewItem = cast(_content.getChildAt(value), ListViewItem);
+		if (item != null) {
+			handleListSelection(item, null, false);
+		}
+		return value;
+	}
+	
+	public function ensureVisible(item:ListViewItem):Void {
+		var vpos:Float = 0;
+		if (_vscroll != null) {
+			vpos = _vscroll.pos;
+		}
+		if (item.y + item.height > vpos + _content.clipHeight) {
+			_vscroll.pos = ((item.y + item.height) - _content.clipHeight);
+		} else if (item.y < vpos) {
+			_vscroll.pos = item.y;
+		}
+		
 	}
 }
 
@@ -258,7 +354,9 @@ class ListViewItem extends StateComponent {
 	public static inline var STATE_NORMAL = "normal";
 	public static inline var STATE_OVER = "over";
 	public static inline var STATE_SELECTED = "selected";
+	public static inline var STATE_DISABLED = "disabled";
 	
+	private var _data:Dynamic;
 	private var _hash:String;
 	private var _controlId:String;
 	private var _controlDataSource:Dynamic;
@@ -306,15 +404,15 @@ class ListViewItem extends StateComponent {
 		if (_subControl != null && _subControl.hitTest(event.stageX, event.stageY) == true) {
 			return;
 		}
-
 		_parentList.handleListSelection(this, event);
+		_parentList.handleClick(this, event);
 	}
 	
 	//******************************************************************************************
 	// IState
 	//******************************************************************************************
 	private override function get_states():Array<String> {
-		return [STATE_NORMAL, STATE_OVER, STATE_SELECTED];
+		return [STATE_NORMAL, STATE_OVER, STATE_SELECTED, STATE_DISABLED];
 	}
 	
 	private override function set_state(value:String):String {
@@ -356,6 +454,7 @@ class ListViewItem extends StateComponent {
 	//******************************************************************************************
 	// Getters/setters
 	//******************************************************************************************
+	public var data(get, set):Dynamic;
 	public var hash(get, set):String;
 	public var subtext(get, set):String;
 	public var icon(get, set):String;
@@ -363,6 +462,15 @@ class ListViewItem extends StateComponent {
 	public var type(null, set):String;
 	public var value(get, set):Dynamic;
 	public var controlDataSource(get, set):Dynamic;
+	
+	private function get_data():Dynamic {
+		return _data;
+	}
+	
+	private function set_data(value:Dynamic):Dynamic {
+		_data = value;
+		return value;
+	}
 	
 	private function get_hash():String {
 		return _hash;
@@ -389,6 +497,7 @@ class ListViewItem extends StateComponent {
 			_subtextControl = new Text();
 			_subtextControl.id = "subtext";
 			_subtextControl.multiline = true;
+			_subtextControl.wrapLines = true;
 			_subtextControl.autoSize = false;
 			_subtextControl.addStates(this.states);
 			addChild(_subtextControl);
@@ -434,7 +543,7 @@ class ListViewItem extends StateComponent {
 		if (_subControl != null) {
 			removeChild(_subControl);
 		}
-		
+
 		if (value == "button") {
 			_subControl = new Button();
 			_subControl.addEventListener(MouseEvent.CLICK, function(e) {
@@ -615,29 +724,5 @@ private class ListViewItemLayout extends DefaultLayout {
 			component.x = container.width - padding.right - component.width;
 			component.y = (container.height / 2) - (component.height / 2);
 		}
-	}
-}
-
-class ListViewEvent extends Event {
-	public static var COMPONENT_EVENT:String = "ComponentEvent";
-	
-	private var li:ListViewItem;
-	private var c:Component;
-	
-	public var item(get, null):ListViewItem;
-	public var component(get, null):Component;
-	
-	public function new(type:String, listItem:ListViewItem, component:Component) {
-		super(type);
-		li = listItem;
-		c = component;
-	}
-	
-	public function get_item():ListViewItem {
-		return li;
-	}
-	
-	public function get_component():Component {
-		return c;
 	}
 }

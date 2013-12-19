@@ -1,7 +1,11 @@
 package haxe.ui.toolkit.resources;
 
+import flash.display.Bitmap;
 import flash.display.BitmapData;
+import flash.display.Loader;
+import flash.utils.ByteArray;
 import haxe.Resource;
+import haxe.ui.toolkit.util.ByteConverter;
 import openfl.Assets;
 
 class ResourceManager {
@@ -21,16 +25,42 @@ class ResourceManager {
 		
 	}
 	
+	public function getXML(resourceId:String, locale:String = null):Xml {
+		var text:String = getText(resourceId, locale);
+		var xml:Xml = null;
+		if (text != null) {
+			xml = Xml.parse(text);
+		}
+		return xml;
+	}
+	
 	public function getText(resourceId:String, locale:String = null):String {
-		var str:String = Assets.getText(resourceId);
-		#if html5
-		str = Resource.getString(resourceId);
-		#end
+		var str:String = Resource.getString(resourceId);
+		if (str == null) {
+			str = Assets.getText(resourceId);
+		}
 		return str;
 	}
 	
 	public function getBitmapData(resourceId:String, locale:String = null):BitmapData {
-		var bmp:BitmapData = Assets.getBitmapData(resourceId, false);
+		if (resourceId == null || resourceId.length == 0) {
+			return null;
+		}
+		
+		var bmp:BitmapData = null;
+		#if !(flash)
+			var bytes:haxe.io.Bytes = Resource.getBytes(resourceId);
+			if (bytes != null) {
+				var ba:ByteArray = ByteConverter.fromHaxeBytes(bytes);
+				var loader:Loader = new Loader();
+				loader.loadBytes(ba);
+				bmp = cast(loader.content, Bitmap).bitmapData;
+			} else {
+				bmp = Assets.getBitmapData(resourceId, false);
+			}
+		#else
+			bmp = Assets.getBitmapData(resourceId, false);
+		#end
 		return bmp;
 	}
 	

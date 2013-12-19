@@ -12,6 +12,7 @@ class Text extends StateComponent {
 	
 	public function new() {
 		super();
+		_valign = "center";
 		autoSize = true;
 		_textDisplay = new TextDisplay();
 		_textDisplay.text = "";
@@ -37,7 +38,9 @@ class Text extends StateComponent {
 	}
 	
 	public override function dispose() {
-		sprite.removeChild(_textDisplay.display);
+		if (sprite.contains(_textDisplay.display)) {
+			sprite.removeChild(_textDisplay.display);
+		}
 		super.dispose();
 	}
 	
@@ -73,7 +76,7 @@ class Text extends StateComponent {
 	//******************************************************************************************
 	public override function applyStyle():Void {
 		super.applyStyle();
-		
+
 		// apply style to TextDisplay
 		if (_textDisplay != null) {
 			_textDisplay.style = style;
@@ -91,6 +94,7 @@ class Text extends StateComponent {
 	 Defines whether or not the text can span more than a single line
 	 **/
 	public var multiline(get, set):Bool;
+	public var wrapLines(get, set):Bool;
 	
 	private function get_multiline():Bool {
 		return _textDisplay.multiline;
@@ -98,6 +102,15 @@ class Text extends StateComponent {
 	
 	private function set_multiline(value:Bool):Bool {
 		_textDisplay.multiline = value;
+		return value;
+	}
+	
+	private function get_wrapLines():Bool {
+		return _textDisplay.wrapLines;
+	}
+	
+	private function set_wrapLines(value:Bool):Bool {
+		_textDisplay.wrapLines = value;
 		return value;
 	}
 }

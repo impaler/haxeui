@@ -19,7 +19,11 @@ class Code extends TextInput {
 	public function new() {
 		super();
 		multiline = true;
-		_textDisplay.wrapLines = false;
+		wrapLines = false;
+		var tf:TextField = cast(_textDisplay.display, TextField);
+		#if flash
+			tf.alwaysShowSelection = true;
+		#end
 		_syntax = CodeSyntax.getSyntax("");
 	}
 	
@@ -41,10 +45,12 @@ class Code extends TextInput {
 	}
 	
 	private override function set_text(value:String):String {
-		value = super.set_text(value);
-		value = StringTools.replace(value, "\t", "    ");
-		super.set_text(value);
-		applyRules();
+		if (value != null) {
+			value = super.set_text(value);
+			value = StringTools.replace(value, "\t", "    ");
+			super.set_text(value);
+			applyRules();
+		}
 		return value;
 	}
 	
@@ -86,7 +92,7 @@ class Code extends TextInput {
 	}
 	
 	private function _onCodeKeyDown(event:KeyboardEvent):Void {
-		if (event.keyCode == 9) {
+		if (event.keyCode == 9 && event.ctrlKey == false && event.altKey == false && event.shiftKey == false) {
 			replaceSelectedText("    ");
 			applyRules();
 		}

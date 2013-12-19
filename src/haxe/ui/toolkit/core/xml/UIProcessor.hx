@@ -5,8 +5,14 @@ import haxe.ui.toolkit.core.ClassManager;
 import haxe.ui.toolkit.core.Component;
 import haxe.ui.toolkit.core.interfaces.IDataComponent;
 import haxe.ui.toolkit.core.interfaces.IDisplayObject;
+import haxe.ui.toolkit.core.StyleableDisplayObject;
 import haxe.ui.toolkit.data.DataManager;
 import haxe.ui.toolkit.data.IDataSource;
+import haxe.ui.toolkit.hscript.ScriptManager;
+import haxe.ui.toolkit.hscript.ScriptUtils;
+import haxe.ui.toolkit.style.Style;
+import haxe.ui.toolkit.style.StyleParser;
+import haxe.ui.toolkit.style.Styles;
 import haxe.ui.toolkit.util.TypeParser;
 
 class UIProcessor extends XMLProcessor {
@@ -44,10 +50,19 @@ class UIProcessor extends XMLProcessor {
 		var c:Component = Type.createInstance(Type.resolveClass(className), []);
 
 		for (attr in config.attributes()) {
+			if (StringTools.startsWith(attr, "xmlns:")) {
+				continue;
+			}
+			
+			var value:String = config.get(attr);
+			if (ScriptUtils.isScript(value) && attr != "text" && attr != "id" && attr != "dataSource" && attr != "resource" && attr != "htmlText" && attr != "placeholderText") {
+				value = ScriptManager.instance.executeScript(value);
+			}
+			
 			if (attr == "width") { // special case for width, want to be able to specify % values
 				var width:Float = 0;
 				var percentWidth:Int = -1;
-				var widthString:String = config.get("width");
+				var widthString:String = value;
 				if (widthString != null) {
 					width = Std.parseInt(widthString);
 					if (widthString.indexOf("%") != -1) {
@@ -65,7 +80,7 @@ class UIProcessor extends XMLProcessor {
 			} else if (attr == "height") { // special case for height, want to be able to specify % values
 				var height:Float = 0;
 				var percentHeight:Int = -1;
-				var heightString:String = config.get("height");
+				var heightString:String = value;
 				if (heightString != null) {
 					height = Std.parseInt(heightString);
 					if (heightString.indexOf("%") != -1) {
@@ -80,9 +95,18 @@ class UIProcessor extends XMLProcessor {
 				if (percentHeight != -1) {
 					c.percentHeight = percentHeight;
 				}
+			} else if (attr == "style") { // ignore condition attr
+				if (Std.is(c, StyleableDisplayObject)) {
+					var inlineStyles:Styles = StyleParser.fromString("_temp {" + value + "}");
+					if (inlineStyles != null) {
+						var style:Style = inlineStyles.getStyle("_temp");
+						if (style != null) {
+							cast(c, StyleableDisplayObject).inlineStyle = style;
+						}
+					}
+				}
 			} else if (attr == "condition") { // ignore condition attr
 			} else if (attr == "dataSource") { // special handling
-				var value:String = config.get(attr);
 				if (Std.is(c, IDataComponent)) {
 					var dataComponent:IDataComponent = cast(c, IDataComponent);
 					var registeredDataSource:IDataSource = DataManager.instance.getRegisteredDataSource(value);
@@ -103,9 +127,10 @@ class UIProcessor extends XMLProcessor {
 						}
 					}
 				}
+			} else if (attr == "text") {
+				c.text = value;
 			} else {
 				try {
-					var value:String = config.get(attr);
 					if (Std.parseInt(value) != null) {
 						Reflect.setProperty(c, attr, Std.parseInt(value));
 					} else if (value == "true" || value == "yes" || value == "false" || value == "no") {

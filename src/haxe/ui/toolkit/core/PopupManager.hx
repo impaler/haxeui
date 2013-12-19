@@ -1,5 +1,6 @@
 package haxe.ui.toolkit.core;
 
+import haxe.Timer;
 import haxe.ui.toolkit.controls.popups.BusyPopupContent;
 import haxe.ui.toolkit.controls.popups.CalendarPopupContent;
 import haxe.ui.toolkit.controls.popups.CustomPopupContent;
@@ -32,12 +33,15 @@ class PopupManager {
 	}
 	
 	public function showSimple(root:Root, text:String, title:String = null, config:Dynamic = PopupButtonType.OK, fn:Dynamic->Void = null):Popup {
-		var p:Popup = new Popup(title, new SimplePopupContent(text), getPopupConfig(config), fn);
+		var popupConfig:PopupConfig = getPopupConfig(config);
+		var p:Popup = new Popup(title, new SimplePopupContent(text), popupConfig, fn);
 		
 		p.root = root;
 		p.visible = false;
 		centerPopup(p);
-		root.showModalOverlay();
+		if (popupConfig.modal == true) {
+			root.showModalOverlay();
+		}
 		root.addChild(p);
 		showPopup(p);
 		
@@ -45,19 +49,22 @@ class PopupManager {
 	}
 	
 	public function showCustom(root:Root, display:IDisplayObject, title:String = null, config:Dynamic = PopupButtonType.CONFIRM, fn:Dynamic->Void = null):Popup {
-		var p:Popup = new Popup(title, new CustomPopupContent(display), getPopupConfig(config), fn);
+		var popupConfig:PopupConfig = getPopupConfig(config);
+		var p:Popup = new Popup(title, new CustomPopupContent(display), popupConfig, fn);
 
 		p.root = root;
 		p.visible = false;
 		centerPopup(p);
-		root.showModalOverlay();
+		if (popupConfig.modal == true) {
+			root.showModalOverlay();
+		}
 		root.addChild(p);
 		showPopup(p);
 		
 		return p;
 	}
 	
-	public function showList(root:Root, items:Dynamic, title:String = null, selectedIndex:Int = -1, fn:Dynamic->Void):Popup {
+	public function showList(root:Root, items:Dynamic, title:String = null, selectedIndex:Int = -1, modal:Bool = true, fn:Dynamic->Void = null):Popup {
 		var ds:IDataSource = null;
 		if (Std.is(items, Array)) { // we need to convert items into a proper data source for the list
 			var arr:Array<Dynamic> = cast(items, Array<Dynamic>);
@@ -75,12 +82,16 @@ class PopupManager {
 			ds = cast(items, IDataSource);
 		}
 
-		var p:Popup = new Popup(title, new ListPopupContent(ds, selectedIndex, fn), new PopupConfig());
+		var popupConfig:PopupConfig = new PopupConfig();
+		popupConfig.modal = modal;
+		var p:Popup = new Popup(title, new ListPopupContent(ds, selectedIndex, fn), popupConfig);
 		
 		p.root = root;
 		p.visible = false;
 		centerPopup(p);
-		root.showModalOverlay();
+		if (popupConfig.modal == true) {
+			root.showModalOverlay();
+		}
 		root.addChild(p);
 		showPopup(p);
 		
@@ -89,6 +100,14 @@ class PopupManager {
 	
 	public function showBusy(root:Root, text:String, delay:Int = -1, title:String = null):Popup {
 		var p:Popup = new Popup(title, new BusyPopupContent(text), new PopupConfig());
+		
+		if (delay > 0) {
+			var timer:Timer = new Timer(delay);
+			timer.run = function():Void {
+				timer.stop();
+				hidePopup(p);
+			}
+		}
 		
 		p.root = root;
 		p.visible = false;
@@ -141,20 +160,20 @@ class PopupManager {
 		}
 	}
 	
-	public function hidePopup(p:Popup):Void {
+	public function hidePopup(p:Popup, dispose:Bool = true):Void {
 		var transition:String = Toolkit.getTransitionForClass(Popup);
 		if (transition == "slide") {
 			Actuate.tween(p, .2, { y: p.root.height }, true).ease(Linear.easeNone).onComplete(function() {
-				p.root.removeChild(p);
+				p.root.removeChild(p, dispose);
 				p.root.hideModalOverlay();
 			});
 		} else if (transition == "fade") {
 			Actuate.tween(p.sprite, .2, { alpha: 0 }, true).ease(Linear.easeNone).onComplete(function() {
-				p.root.removeChild(p);
+				p.root.removeChild(p, dispose);
 				p.root.hideModalOverlay();
 			});
 		} else {
-			p.root.removeChild(p);
+			p.root.removeChild(p, dispose);
 			p.root.hideModalOverlay();
 		}
 	}
@@ -183,6 +202,8 @@ class PopupManager {
 			if (n & PopupButtonType.CONFIRM == PopupButtonType.CONFIRM) {
 				conf.addButton(PopupButtonType.CONFIRM);
 			}
+		} else if (Std.is(config, PopupConfig)) {
+			conf = cast(config, PopupConfig);
 		}
 		return conf;
 	}
@@ -190,6 +211,9 @@ class PopupManager {
 
 class PopupConfig {
 	public var buttons:Array<PopupButtonConfig>;
+	public var id:String;
+	public var styleName:String;
+	public var modal:Bool = true;
 	
 	public function new() {
 		buttons = new Array<PopupButtonConfig>();

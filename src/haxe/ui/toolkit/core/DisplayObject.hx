@@ -9,6 +9,7 @@ import haxe.ui.toolkit.core.interfaces.IDisplayObjectContainer;
 import haxe.ui.toolkit.core.interfaces.IDrawable;
 import haxe.ui.toolkit.core.interfaces.IEventDispatcher;
 import haxe.ui.toolkit.core.interfaces.InvalidationFlag;
+import haxe.ui.toolkit.events.UIEvent;
 
 class DisplayObject implements IEventDispatcher implements IDisplayObject implements IDrawable {
 	// used in IDisplayObject getters/setters
@@ -22,16 +23,17 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 	private var _percentWidth:Float = -1;
 	private var _percentHeight:Float = -1;
 	private var _ready:Bool = false;
+	private var _invalidating:Bool = false;
 	private var _sprite:Sprite;
 	private var _halign:String = "left";
-	private var _valign:String = "center";
+	private var _valign:String = "top";
 
 	private var _eventListeners:StringMap < List < Dynamic->Void >> ;
 	
 	public function new() {
 		_sprite = new Sprite();
 		_sprite.tabChildren = false;
-		addEventListener(Event.ADDED_TO_STAGE, _onAddedToStage);
+		addEventListener(Event.ADDED_TO_STAGE, _onAddedToStage, false, 100);
 	}
 
 	//******************************************************************************************
@@ -43,18 +45,21 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 	private function initialize():Void {
 	}
 	
+	private function postInitialize():Void {
+	}
 	//******************************************************************************************
 	// Event handlers
 	//******************************************************************************************
 	private function _onAddedToStage(event:Event):Void {
 		removeEventListener(Event.ADDED_TO_STAGE, _onAddedToStage);
-		
+
 		preInitialize();
 		_ready = true;
 		initialize();
+		postInitialize();
 		invalidate();
 		
-		var event:Event =  new Event(Event.INIT);
+		var event:UIEvent =  new UIEvent(UIEvent.INIT);
 		dispatchEvent(event);
 	}
 	
@@ -136,10 +141,14 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 		}
 		
 		_width = value;
+		_invalidating = false;
 		invalidate(InvalidationFlag.DISPLAY | InvalidationFlag.SIZE);
 		if (_parent != null) {
 			_parent.invalidate(InvalidationFlag.LAYOUT);
 		}
+		var event:UIEvent =  new UIEvent(UIEvent.RESIZE);
+		dispatchEvent(event);
+		
 		return value;
 	}
 	
@@ -154,10 +163,14 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 		}
 		
 		_height = value;
+		_invalidating = false;
 		invalidate(InvalidationFlag.DISPLAY | InvalidationFlag.SIZE);
 		if (_parent != null) {
 			_parent.invalidate(InvalidationFlag.LAYOUT);
 		}
+		var event:UIEvent =  new UIEvent(UIEvent.RESIZE);
+		dispatchEvent(event);
+		
 		return value;
 	}
 	
@@ -264,17 +277,17 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 		return b;
 	}
 	
-	static var invalidationCount:Int = 0;
 	public function invalidate(type:Int = InvalidationFlag.ALL):Void {
-		if (!_ready) {
+		if (!_ready || _invalidating) {
 			return;
 		}
 
+		_invalidating = true;
 		if (type & InvalidationFlag.DISPLAY == InvalidationFlag.DISPLAY
 			|| type & InvalidationFlag.STATE == InvalidationFlag.STATE) {
-			invalidationCount++;
 			paint();
 		}
+		_invalidating = false;
 	}
 	
 	public function dispose():Void {
@@ -282,23 +295,39 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 		removeAllEventListeners();
 	}
 	
+	private function interceptEvent(event:Event):Void {
+		dispatchEvent(new UIEvent(UIEvent.PREFIX + event.type));
+	}
+	
 	//******************************************************************************************
 	// IEventDispatcher
 	//******************************************************************************************
 	public function addEventListener(type:String, listener:Dynamic->Void, useCapture:Bool = false, priority:Int = 0, useWeakReference:Bool = false):Void {
+		if (StringTools.startsWith(type, UIEvent.PREFIX)) {
+			var interceptEventType:String = type.substr(UIEvent.PREFIX.length, type.length);
+			if (getListenerCount(interceptEventType, interceptEvent) == 0) {
+				addEventListener(interceptEventType, interceptEvent, useCapture, priority, useWeakReference);
+			}
+		}
+		
 		if (_eventListeners == null) {
 			_eventListeners = new StringMap < List < Dynamic->Void >> ();
-			var list:List < Dynamic->Void > = _eventListeners.get(type);
-			if (list == null) {
-				list = new List < Dynamic->Void > ();
-				_eventListeners.set(type, list);
-			}
-			list.add(listener);
 		}
+		
+		var list:List < Dynamic->Void > = _eventListeners.get(type);
+		if (list == null) {
+			list = new List < Dynamic->Void > ();
+			_eventListeners.set(type, list);
+		}
+		list.add(listener);
+		
 		_sprite.addEventListener(type, listener, useCapture, priority, useWeakReference);
 	}
 	
 	public function dispatchEvent(event:Event):Bool {
+		if (Std.is(event, UIEvent)) {
+			cast(event, UIEvent).displayObject = this;
+		}
 		return _sprite.dispatchEvent(event);
 	}
 	
@@ -307,6 +336,13 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 	}
 	
 	public function removeEventListener(type:String, listener:Dynamic->Void, useCapture:Bool = false):Void {
+		if (StringTools.startsWith(type, UIEvent.PREFIX)) {
+			var interceptEventType:String = type.substr(UIEvent.PREFIX.length, type.length);
+			if (_eventListeners.exists(type) == false || _eventListeners.get(type).length <= 1) {
+				removeEventListener(interceptEventType, interceptEvent, useCapture);
+			}
+		}
+		
 		if (_eventListeners != null && _eventListeners.exists(type)) {
 			var list:List < Dynamic->Void > = _eventListeners.get(type);
 			if (list != null) {
@@ -362,5 +398,18 @@ class DisplayObject implements IEventDispatcher implements IDisplayObject implem
 				}
 			}
 		}
+	}
+	
+	private function getListenerCount(type:String, listener:Dynamic->Void):Int {
+		var count:Int = 0;
+		if (_eventListeners.exists(type)) {
+			var list:List < Dynamic->Void > = _eventListeners.get(type); 
+			for (l in list) {
+				if (l == listener) {
+					count++;
+				}
+			}
+		}
+		return count;
 	}
 }

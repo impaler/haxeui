@@ -7,6 +7,8 @@ import haxe.ui.toolkit.core.interfaces.ILayout;
 import haxe.ui.toolkit.core.interfaces.InvalidationFlag;
 import haxe.ui.toolkit.layout.DefaultLayout;
 
+import haxe.CallStack;
+
 class DisplayObjectContainer extends DisplayObject implements IDisplayObjectContainer {
 	private var _children:Array<IDisplayObject>;
 	
@@ -39,15 +41,17 @@ class DisplayObjectContainer extends DisplayObject implements IDisplayObjectCont
 	}
 	
 	public override function invalidate(type:Int = InvalidationFlag.ALL):Void {
-		super.invalidate();
-		if (!_ready) {
+		if (!_ready || _invalidating) {
 			return;
 		}
 
+		super.invalidate(type);
+		_invalidating = true;
 		if (type & InvalidationFlag.SIZE == InvalidationFlag.SIZE
 			|| type & InvalidationFlag.LAYOUT == InvalidationFlag.LAYOUT) {
 			_layout.refresh();
 		}
+		_invalidating = false;
 	}
 	
 	//******************************************************************************************
@@ -59,20 +63,32 @@ class DisplayObjectContainer extends DisplayObject implements IDisplayObjectCont
 	public var autoSize(get, set):Bool;
 	
 	private function get_numChildren():Int {
-		return _children.length;
+		var arr = _children;
+		#if html5
+		if (_childrenToAdd != null) {
+			arr = arr.concat(_childrenToAdd);
+		}
+		#end
+		return arr.length;
 	}
 	
 	private function get_children():Array<IDisplayObject> {
-		return _children;
+		var arr = _children;
+		#if html5
+		if (_childrenToAdd != null) {
+			arr = arr.concat(_childrenToAdd);
+		}
+		#end
+		return arr;
 	}
 	
 	public function indexOfChild(child:IDisplayObject):Int {
-		var index:Int = Lambda.indexOf(_children, child);
+		var index:Int = std.Lambda.indexOf(children, child);
 		return index;
 	}
 	
 	public function getChildAt(index:Int):IDisplayObject {
-		return _children[index];
+		return children[index];
 	}
 	
 	#if html5
@@ -149,7 +165,55 @@ class DisplayObjectContainer extends DisplayObject implements IDisplayObjectCont
 			}
 			invalidate(InvalidationFlag.LAYOUT);
 		}
+		#if html5
+		if (_childrenToAdd != null) {
+			var success = _childrenToAdd.remove(child);
+			if (dispose && success) {
+				child.dispose();
+			}
+		}
+		#end
 		return child;
+	}
+	
+	public function removeChildAt(index:Int, dispose:Bool = true):IDisplayObject {
+		return removeChild(getChildAt(index), dispose);
+	}
+	
+	public function removeAllChildren():Void {
+		var arr = children;
+		while (arr.length > 0) {
+			var child:IDisplayObject = arr[0];
+			removeChild(child);
+		}
+		#if html5
+		_childrenToAdd = null;
+		#end
+	}
+	
+	public function contains(child:IDisplayObject):Bool {
+		if (child == null) {
+			return false;
+		}
+		#if html5
+		if (_childrenToAdd != null) {
+			return std.Lambda.has(_childrenToAdd, child);
+		}
+		#end
+
+		return sprite.contains(child.sprite);
+	}
+	
+	public function setChildIndex(child:IDisplayObject, index:Int):Void {
+		if (child != null) {
+			sprite.setChildIndex(child.sprite, index);
+		}
+		#if html5
+		if (_childrenToAdd != null) {
+			_childrenToAdd.remove(child);
+			_childrenToAdd.insert(index, child);
+		}
+		#end
 	}
 	
 	public function findChildAs<T>(type:Class<T>):Null<T> {
@@ -202,7 +266,9 @@ class DisplayObjectContainer extends DisplayObject implements IDisplayObjectCont
 			try {
 				removeChild(child);
 			} catch (e:Dynamic) {
-				trace("problem removing component: " + this + ", " + child + "(" + e + ")");
+				var stack:Array<haxe.StackItem> = CallStack.exceptionStack();
+				trace("Problem removing component: " + this + ", " + child + "(" + e + "), callstack:");
+				trace(CallStack.toString(stack));
 			}
 		}
 		super.dispose();

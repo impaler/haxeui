@@ -15,6 +15,8 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 	private var _style:Style;
 	private var _storedStyles:StringMap<Style>; // styles stored for ease later
 	private var _styleName:String;
+	private var _inlineStyle:Style;
+	private var _setStyle:Style;
 	
 	public function new() {
 		super();
@@ -26,6 +28,7 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 	private override function preInitialize():Void {
 		super.preInitialize();
 
+		_setStyle = _style;
 		buildStyles();
 		if (Std.is(this, StateComponent)) {
 			var state:String = cast(this, StateComponent).state;
@@ -39,6 +42,9 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 		} else {
 			_style = StyleManager.instance.buildStyleFor(this);
 		}
+		
+		_style.merge(_inlineStyle);
+		_style.merge(_setStyle);
 		
 		if (_style != null) {
 			// get props from style if they exist
@@ -101,6 +107,7 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 		if (_ready) {
 			buildStyles();
 			_style = StyleManager.instance.buildStyleFor(this);
+			_style.merge(_setStyle);
 			invalidate(InvalidationFlag.DISPLAY);
 		}
 		return v;
@@ -111,13 +118,18 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 	//******************************************************************************************
 	public var style(get, set):Style;
 	public var styleName(get, set):String;
+	public var inlineStyle(get, set):Style;
 	
 	private function get_style():Style {
+		if (_style == null) {
+			_style = new Style();
+		}
 		return _style;
 	}
 	
 	private function set_style(value:Style):Style {
 		_style = value;
+		_style.target = this;
 		applyStyle();
 		return value;
 	}
@@ -131,6 +143,28 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 		if (_ready) {
 			buildStyles();
 			_style = StyleManager.instance.buildStyleFor(this);
+			_style.merge(_setStyle);
+			invalidate(InvalidationFlag.DISPLAY);
+		}
+		return value;
+	}
+
+	private function get_inlineStyle():Style {
+		if (_inlineStyle == null) {
+			_inlineStyle = new Style();
+		}
+		return _inlineStyle;
+	}
+	
+	private function set_inlineStyle(value:Style):Style {
+		_inlineStyle = value;
+		if (_inlineStyle != null) {
+			_inlineStyle.target = this;
+		}
+		if (_ready) {
+			buildStyles();
+			_style = StyleManager.instance.buildStyleFor(this);
+			_style.merge(_setStyle);
 			invalidate(InvalidationFlag.DISPLAY);
 		}
 		return value;
@@ -151,6 +185,13 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 	}
 	
 	public function applyStyle():Void {
+		if (_style == null) {
+			return;
+		}
+		
+		if (_inlineStyle != null) {
+			_style.merge(_inlineStyle);
+		}
 		if (_style != null) {
 			if (_style.alpha != -1) {
 				_sprite.alpha = _style.alpha;
@@ -168,7 +209,7 @@ class StyleableDisplayObject extends DisplayObjectContainer implements IStyleabl
 		invalidate(InvalidationFlag.DISPLAY);
 	}
 	
-	public function buildStyles():Void {
+	private function buildStyles():Void {
 		
 	}
 }

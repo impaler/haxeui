@@ -7,7 +7,7 @@ import haxe.ui.toolkit.core.Root;
 class RootManager {
 	private static var _instance:RootManager;
 	public static var instance(get_instance, null):RootManager;
-	public static function get_instance():RootManager {
+	private static function get_instance():RootManager {
 		if (_instance == null) {
 			_instance = new RootManager();
 		}
@@ -34,7 +34,7 @@ class RootManager {
 		root.addEventListener(Event.ADDED_TO_STAGE, function(e) {
 			if (fn != null) {
 				#if ios
-					haxe.Timer.delay(fn(root), 100); // iOS 6
+					haxe.Timer.delay(function() fn(root), 100); // iOS 6
 				#else
 					fn(root);
 				#end
@@ -44,6 +44,7 @@ class RootManager {
 		
 		root.root = root;
 		root.id = (options.id != null) ? options.id : "root";
+		root.styleName = (options.styleName != null) ? options.styleName : null;
 		root.x = (options.x != null) ? options.x : 0;
 		root.y = (options.y != null) ? options.y : 0;
 		root.width = (options.width != null) ? options.width : 0;
@@ -56,13 +57,8 @@ class RootManager {
 	}
 	
 	public function destroyRoot(root:Root):Void {
-		var options:Dynamic = null;
-		if (options == null) {
-			options = { };
-		}
-
-		options.parent = (options.parent != null) ? options.parent : Lib.current.stage;
-		options.parent.removeChild(root.sprite);
+		if (root.sprite.parent != null)
+			root.sprite.parent.removeChild(root.sprite);
 		root.dispose();
 		
 		_roots.remove(root);
@@ -72,5 +68,10 @@ class RootManager {
 		for (root in _roots) {
 			destroyRoot(root);
 		}
+	}
+	
+	public var roots(get, null):Array<Root>;
+	public function get_roots():Array<Root> {
+		return _roots;
 	}
 }

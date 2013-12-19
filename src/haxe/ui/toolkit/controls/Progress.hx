@@ -3,12 +3,14 @@ package haxe.ui.toolkit.controls;
 import flash.display.Bitmap;
 import flash.events.Event;
 import flash.Lib;
+import haxe.ui.toolkit.core.base.State;
 import haxe.ui.toolkit.core.Component;
 import haxe.ui.toolkit.core.interfaces.Direction;
 import haxe.ui.toolkit.core.interfaces.IDirectional;
 import haxe.ui.toolkit.core.interfaces.IDisplayObject;
 import haxe.ui.toolkit.core.interfaces.InvalidationFlag;
 import haxe.ui.toolkit.core.interfaces.IScrollable;
+import haxe.ui.toolkit.core.StateComponent;
 import haxe.ui.toolkit.layout.DefaultLayout;
 import haxe.ui.toolkit.layout.Layout;
 
@@ -19,23 +21,25 @@ import haxe.ui.toolkit.layout.Layout;
  
  * `Event.CHANGE` - Dispatched when value of the progess bar has changed
  **/
-class Progress extends Component implements IScrollable implements IDirectional {
+class Progress extends StateComponent implements IScrollable implements IDirectional {
 	private var _direction:String;
 	private var _min:Float = 0;
 	private var _max:Float = 100;
 	private var _pos:Float = 0;
 	private var _incrementSize:Float = 1;
 	
-	private var _valueBgComp:Component;
-	private var _valueComp:Component;
+	private var _valueBgComp:StateComponent;
+	private var _valueComp:StateComponent;
 	
 	public function new() {
 		super();
-		
+		addStates([State.NORMAL, State.DISABLED]);
 		direction = Direction.HORIZONTAL;
-		_valueBgComp = new Component();
+		_valueBgComp = new StateComponent();
+		_valueBgComp.addStates([State.NORMAL, State.DISABLED]);
 		_valueBgComp.id = "background";
-		_valueComp = new Component();
+		_valueComp = new StateComponent();
+		_valueComp.addStates([State.NORMAL, State.DISABLED]);
 		_valueComp.id = "value";
 		_valueComp.sprite.mouseEnabled = false;
 	}
@@ -181,6 +185,10 @@ private class HProgressLayout extends DefaultLayout {
 			} else if (cx > ucx) {
 				cx = ucx;
 			}
+
+			if (thumb != null) {
+				cx += thumb.width / 2;
+			}
 			
 			if (cx == 0) {
 				value.visible = false;
@@ -203,17 +211,10 @@ private class HProgressLayout extends DefaultLayout {
 
 		var scroll:IScrollable = cast(container, IScrollable);
 		if (value != null) {
-			//value.y = (container.height / 2) - (value.height / 2);
 			
 			var thumb:IDisplayObject =  container.findChild("thumb");
 			if (thumb != null) {
-				var xpos:Float = value.x;
-				if (scroll.pos != scroll.min) {
-					xpos += value.width;
-					if (scroll.pos != scroll.max) { // bit of a hack
-						xpos--;
-					}
-				}
+				var xpos:Float = value.x + value.width - (thumb.width / 2);
 				thumb.x = Std.int(xpos);
 			}
 		}
@@ -252,6 +253,10 @@ private class VProgressLayout extends DefaultLayout {
 				cy = ucy;
 			}
 			
+			if (thumb != null) {
+				cy += thumb.height / 2;
+			}
+			
 			if (cy == 0) {
 				value.visible = false;
 			} else {
@@ -274,20 +279,11 @@ private class VProgressLayout extends DefaultLayout {
 		var scroll:IScrollable = cast(container, IScrollable);
 		if (value != null) {
 			var ucy:Float = usableHeight;
-			//value.x = (container.width / 2) - (value.width / 2);
 			value.y = ucy - value.height - background.layout.padding.bottom;
 			
 			var thumb:IDisplayObject =  container.findChild("thumb");
 			if (thumb != null) {
-				var ypos:Float = value.y;
-				if (scroll.pos != scroll.min) {
-					ypos -= thumb.height;
-					if (scroll.pos != scroll.max) { // bit of a hack
-						ypos++;
-					}
-				} else {
-					ypos = innerHeight - thumb.height;
-				}
+				var ypos:Float = value.y - (thumb.height / 2);
 				thumb.y = Std.int(ypos);
 			}
 		}

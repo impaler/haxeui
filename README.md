@@ -1,21 +1,69 @@
 Haxe UI (Formerly <a href="https://github.com/ianharrigan/yahui">YAHUI</a>)
 ================================
-Cross platfrom Haxe/OpenFL set of styleable application centric rich UI components to be used "out the box". Supports css type styling/skinning.
+Cross platform Haxe/OpenFL set of styleable application centric rich UI components to be used "out the box". Supports css type styling/skinning.
 
-<img src="https://raw.github.com/ianharrigan/haxeui/master/docs/screenshots/main.jpg" />
-<img src="https://raw.github.com/ianharrigan/haxeui/master/docs/screenshots/extended.jpg" />
+<img src="https://raw.github.com/ianharrigan/haxeui-test-app/master/docs/screenshots/main.jpg" />
+<img src="https://raw.github.com/ianharrigan/haxeui-test-app/master/docs/screenshots/extended.jpg" />
 
-<a href="https://github.com/ianharrigan/haxeui/blob/master/docs/demo/haxeuitoolkit.swf?raw=true">Compiled demo</a> (May be out of date)
+<b>Demos</b> (May be out of date): 
+<a href="https://github.com/ianharrigan/haxeui-test-app/blob/master/docs/demo/haxeuitestapp.swf?raw=true">SWF</a> | 
+<a href="https://github.com/ianharrigan/haxeui-test-app/blob/master/docs/demo/windows/haxeuitestapp.zip?raw=true">Windows</a> | 
+<a href="https://github.com/ianharrigan/haxeui-test-app/blob/master/docs/demo/neko/haxeuitestapp.zip?raw=true">Neko</a> | 
+<a href="https://github.com/ianharrigan/haxeui-test-app/blob/master/docs/demo/android/haxeuitestapp.apk?raw=true">Android</a> |
+<a href="https://github.com/ianharrigan/haxeui-test-app/blob/master/docs/demo/air/haxeuitestapp.air?raw=true">AIR</a>
 
-<a href="https://github.com/ianharrigan/hui-irc-threadtest">IRC client test app</a>
+Adobe AIR  note: Installer will not install from mounted/network drives.
 
+Documentation
+-------------------------
+<a href="https://github.com/ianharrigan/haxeui/wiki">Wiki</a> (Incomplete)
 
-<a href="https://github.com/ianharrigan/haxeui/tree/master/samples">Samples</a>
+<a href="http://haxeui.org/docs/api">API</a> (Incomplete)
+
+Projects
+-------------------------
+ - <a href="https://github.com/ianharrigan/haxeui-test-app">Test App</a> (Used in demo/screenshots)
+ - <a href="https://github.com/ianharrigan/haxeui/tree/master/samples">Samples</a>
+ - <a href="https://github.com/ianharrigan/hui-irc-threadtest">IRC client test app</a>
+ - <a href="https://github.com/ianharrigan/haxe-pad">HaxePad</a>
+
+Instructions
+-------------------------
+First install haxeui via haxelib:
+```
+haxelib install haxeui
+```
+
+Once installed add 
+```
+<haxelib name="haxeui" />
+```
+to your openfl application.xml. Finally, create a basic application with:
+	
+```haxe
+import haxe.ui.toolkit.core.Macros;
+import haxe.ui.toolkit.core.Toolkit;
+import haxe.ui.toolkit.core.Root;
+import haxe.ui.toolkit.controls.Button;
+
+class Main {
+	public static function main() {
+		Macros.addStyleSheet("styles/gradient/gradient.css");
+		Toolkit.init();
+		Toolkit.openFullscreen(function(root:Root) {
+			var button:Button = new Button();
+			button.text = "HaxeUI!";
+			root.addChild(button);
+		});
+	}
+}
+```
+
+Note: haxeui comes with some styles ready for use, if no styles are added a default one is used.
 
 Components
 -------------------------
 General components
-
 - Button
 - Check box
 - Image
@@ -28,14 +76,13 @@ General components
 - List selection (drop downs, popup lists)
 - Date selection (drop downs, popup calendar)
 - Calendar 
+- Menus
 
 Extended components
-
  - Code editor (supports basic syntax highlighting)
  - RTF edtior (preliminary, only fully functional in flash due to neko/cpp limitations)
 
 Layout, position and containment components
-
 - Accordion
 - Grid
 - HBox
@@ -81,7 +128,7 @@ Licence
     The above copyright notice and this permission notice shall be included
     in all copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    THE SOFTWARE IS PROVIDED ?AS IS?, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
     THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER

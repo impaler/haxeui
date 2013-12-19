@@ -1,12 +1,16 @@
 package haxe.ui.toolkit.controls;
 
+import flash.display.DisplayObject;
+import flash.display.Sprite;
 import flash.events.Event;
 import flash.text.TextField;
 import flash.text.TextFormat;
+import haxe.ui.toolkit.core.base.State;
 import haxe.ui.toolkit.core.Component;
 import haxe.ui.toolkit.core.interfaces.InvalidationFlag;
 import haxe.ui.toolkit.core.interfaces.IStyleable;
 import haxe.ui.toolkit.core.StateComponent;
+import haxe.ui.toolkit.style.Style;
 import haxe.ui.toolkit.text.ITextDisplay;
 import haxe.ui.toolkit.text.TextDisplay;
 import haxe.ui.toolkit.layout.DefaultLayout;
@@ -16,12 +20,14 @@ import haxe.ui.toolkit.layout.DefaultLayout;
  **/
 class TextInput extends StateComponent {
 	private var _textDisplay:ITextDisplay;
+	private var _textPlaceHolder:Text;
 	
 	private var _vscroll:VScroll;
 	private var _hscroll:HScroll;
 	
 	public function new() {
 		super();
+		addStates([State.NORMAL, State.DISABLED]);
 		_layout = new TextInputLayout();
 		_textDisplay = new TextDisplay();
 		_textDisplay.interactive = true;
@@ -47,25 +53,48 @@ class TextInput extends StateComponent {
 		
 		_textDisplay.display.addEventListener(Event.CHANGE, _onTextChange);
 		_textDisplay.display.addEventListener(Event.SCROLL, _onTextScroll);
-		checkScrolls();		
+		checkScrolls();	
+		
+		if (_textPlaceHolder != null && contains(_textPlaceHolder) == false) {
+			addChild(_textPlaceHolder);
+		}
+		
+		if (_textPlaceHolder != null) {
+			setChildIndex(_textPlaceHolder, 0);
+		}
 	}
 
 	public override function dispose() {
 		_textDisplay.display.removeEventListener(Event.CHANGE, _onTextChange);
 		_textDisplay.display.removeEventListener(Event.SCROLL, _onTextScroll);
 		sprite.removeChild(_textDisplay.display);
+		if (_textPlaceHolder != null && contains(_textPlaceHolder)) {
+			removeChild(_textPlaceHolder);
+		}
 		super.dispose();
 	}
 	
 	public override function invalidate(type:Int = InvalidationFlag.ALL):Void {
-		if (!_ready) {
+		if (!_ready || _invalidating) {
 			return;
 		}
 		
 		super.invalidate(type);
+		_invalidating = true;
 		if (type & InvalidationFlag.SIZE == InvalidationFlag.SIZE) {
 			checkScrolls();
 		}
+		_invalidating = false;
+	}
+	
+	private override function set_disabled(value:Bool):Bool {
+		super.set_disabled(value);
+		if (value == true) {
+			_textDisplay.interactive = false;
+		} else {
+			_textDisplay.interactive = true;
+		}
+		return value;
 	}
 	
 	//******************************************************************************************
@@ -73,6 +102,9 @@ class TextInput extends StateComponent {
 	//******************************************************************************************
 	private function _onTextChange(event:Event):Void {
 		checkScrolls();
+		if (_textPlaceHolder != null) {
+			_textPlaceHolder.visible = (text.length == 0);
+		}
 	}
 
 	private function _onTextScroll(event:Event):Void {
@@ -118,6 +150,15 @@ class TextInput extends StateComponent {
 		if (_textDisplay != null) {
 			_textDisplay.style = style;
 		}
+		if (_textPlaceHolder != null) {
+			var placeholderStyle:Style = new Style();
+			placeholderStyle.merge(style);
+			placeholderStyle.borderSize = 0;
+			placeholderStyle.backgroundColor = -1;
+			placeholderStyle.backgroundImage = null;
+			placeholderStyle.padding = 0;
+			_textPlaceHolder.style = placeholderStyle;
+		}
 	}
 	
 	//******************************************************************************************
@@ -139,12 +180,16 @@ class TextInput extends StateComponent {
 	 Sets the currently selected text (if available) to the specified text format
 	 **/
 	public var selectedTextFormat(get, null):TextFormat;
+	public var wrapLines(get, set):Bool;
+	public var displayAsPassword(get, set):Bool;
+	public var placeholderText(get, set):String;
 	
 	private function get_multiline():Bool {
 		return _textDisplay.multiline;
 	}
 	
 	private function set_multiline(value:Bool):Bool {
+		_textDisplay.wrapLines = value;
 		_textDisplay.multiline = value;
 		return value;
 	}
@@ -172,6 +217,52 @@ class TextInput extends StateComponent {
 		return tf.getTextFormat(selectionBeginIndex - 1, selectionEndIndex);
 	}
 	
+	private function get_wrapLines():Bool {
+		return _textDisplay.wrapLines;
+	}
+	
+	private function set_wrapLines(value:Bool):Bool {
+		_textDisplay.wrapLines = value;
+		return value;
+	}
+	
+	private function get_displayAsPassword():Bool {
+		return _textDisplay.displayAsPassword;
+	}
+	
+	private function set_displayAsPassword(value:Bool):Bool {
+		_textDisplay.displayAsPassword = value;
+		return value;
+	}
+	
+	private function get_placeholderText():String {
+		if (_textPlaceHolder == null) {
+			return null;
+		}
+		return _textPlaceHolder.text;
+	}
+	
+	private function set_placeholderText(value:String):String {
+		if (_textPlaceHolder == null) {
+			_textPlaceHolder = new Text();
+			_textPlaceHolder.id = "placeholder";
+		}
+		_textPlaceHolder.text = value;
+		if (_ready && contains(_textPlaceHolder) == false && value != null) {
+			trace("addding");
+			addChild(_textPlaceHolder);
+		}
+		if (value == null) {
+			if (contains(_textPlaceHolder)) {
+				removeChild(_textPlaceHolder);
+			}
+			_textPlaceHolder = null;
+		}
+		if (_textPlaceHolder != null) {
+			_textPlaceHolder.visible = (text.length == 0);
+		}
+		return value;
+	}
 	//******************************************************************************************
 	// Helpers
 	//******************************************************************************************
@@ -183,6 +274,11 @@ class TextInput extends StateComponent {
 		#if flash
 			tf.replaceSelectedText(s);
 		#end
+	}
+	
+	public function focus():Void {
+		var tf:TextField = cast(_textDisplay.display, TextField);
+		tf.stage.focus = tf;
 	}
 	
 	private function checkScrolls():Void {
@@ -247,7 +343,7 @@ private class TextInputLayout extends DefaultLayout {
 		if (container.sprite.numChildren > 0) {
 			var vscroll:VScroll = container.findChildAs(VScroll);
 			
-			var text:TextField = cast(container.sprite.getChildAt(0), TextField);
+			var text:TextField = findTextField();
 			if (text != null) {
 				text.x = padding.left;
 				if (text.multiline == true) {
@@ -258,6 +354,12 @@ private class TextInputLayout extends DefaultLayout {
 					text.y = (container.height / 2) - (text.height / 2);
 				}
 				text.width = usableWidth;
+				
+				var placeholder:Text = container.findChild("placeholder");
+				if (placeholder != null) {
+					placeholder.width = text.width;
+					placeholder.height = text.height;
+				}
 			}
 		}
 	}
@@ -272,6 +374,13 @@ private class TextInputLayout extends DefaultLayout {
 		var hscroll:HScroll = container.findChildAs(HScroll);
 		if (hscroll != null) {
 			hscroll.y = container.height - hscroll.height - padding.bottom;
+		}
+		
+		var text:TextField = findTextField();
+		var placeholder:Text = container.findChild("placeholder");
+		if (text != null && placeholder != null) {
+			placeholder.x = text.x;
+			placeholder.y = text.y + 1;
 		}
 	}
 	
@@ -292,5 +401,17 @@ private class TextInputLayout extends DefaultLayout {
 			ucy -= hscroll.height - spacingY;
 		}
 		return ucy;
+	}
+	
+	private function findTextField():TextField {
+		var tf:TextField = null;
+		for (i in 0...container.sprite.numChildren) {
+			var child:DisplayObject = container.sprite.getChildAt(i);
+			if (Std.is(child, TextField)) {
+				tf = cast(child, TextField);
+				break;
+			}
+		}
+		return tf;
 	}
 }

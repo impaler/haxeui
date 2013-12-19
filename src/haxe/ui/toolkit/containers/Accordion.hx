@@ -11,6 +11,7 @@ import haxe.ui.toolkit.core.interfaces.IDisplayObjectContainer;
 import haxe.ui.toolkit.core.interfaces.IEventDispatcher;
 import haxe.ui.toolkit.core.interfaces.InvalidationFlag;
 import haxe.ui.toolkit.core.Toolkit;
+import haxe.ui.toolkit.events.UIEvent;
 import motion.Actuate;
 import motion.easing.Linear;
 
@@ -20,8 +21,7 @@ import motion.easing.Linear;
 class Accordion extends VBox {
 	private var _panels:Array<IDisplayObject>;
 	private var _buttons:Array<AccordionButton>;
-	
-	//private var _transition:String = "slide";
+	private var _selectedIndex:Int = -1;
 	
 	public function new() {
 		super();
@@ -33,6 +33,14 @@ class Accordion extends VBox {
 	//******************************************************************************************
 	// Overrides
 	//******************************************************************************************
+	public override function initialize():Void {
+		super.initialize();
+		
+		if (_selectedIndex != -1) {
+			showPage(_selectedIndex);
+		}
+	}
+	
 	/**
 	 Adds a panel to the accordion, the childs `text` property will be used as the title
 	 **/
@@ -64,13 +72,27 @@ class Accordion extends VBox {
 	}
 
 	//******************************************************************************************
-	// Helpers
+	// Properties
 	//******************************************************************************************
-	private function buildMouseClickFunction(index:Int) {
-		return function(event:MouseEvent) { mouseClickButton(index); };
+	public var selectedIndex(get, set):Int;
+	
+	private function get_selectedIndex():Int {
+		return _selectedIndex;
 	}
 	
-	private function mouseClickButton(index:Int):Void {
+	private function set_selectedIndex(value:Int):Int {
+		if (_ready == true) {
+			showPage(value);
+		} else {
+			_selectedIndex = value;
+		}
+		return value;
+	}
+	
+	//******************************************************************************************
+	// Helpers
+	//******************************************************************************************
+	private function showPage(index:Int):Void {
 		var button:AccordionButton = _buttons[index];
 		for (b in _buttons) {
 			if (b == button) {
@@ -81,6 +103,16 @@ class Accordion extends VBox {
 				}
 			}
 		}
+		
+		dispatchEvent(new Event(Event.CHANGE));
+	}
+	
+	private function buildMouseClickFunction(index:Int) {
+		return function(event:MouseEvent) { mouseClickButton(index); };
+	}
+	
+	private function mouseClickButton(index:Int):Void {
+		showPage(index);
 	}
 	
 	private function showPanel(index:Int):Void {
@@ -91,12 +123,13 @@ class Accordion extends VBox {
 		if (panel != null) {
 			panel.visible = false;
 			if (panel.ready == false) {
-				cast(panel, IEventDispatcher).addEventListener(Event.INIT, _onPanelAdded);
+				cast(panel, IEventDispatcher).addEventListener(UIEvent.INIT, _onPanelAdded);
 			} else {
-				cast(panel, IEventDispatcher).addEventListener(Event.ADDED_TO_STAGE, _onPanelAdded);
+				cast(panel, IEventDispatcher).addEventListener(UIEvent.ADDED_TO_STAGE, _onPanelAdded);
 			}
 			super.addChildAt(panel, buttonChildIndex + 1);
 			button.selected = true;
+			_selectedIndex = index;
 		}
 	}
 	
@@ -129,8 +162,8 @@ class Accordion extends VBox {
 	
 	private function _onPanelAdded(event:Event):Void {
 		var panel:IDisplayObject = findPanelFromSprite(event.target);
-		cast(panel, IEventDispatcher).removeEventListener(Event.ADDED_TO_STAGE, _onPanelAdded);
-		cast(panel, IEventDispatcher).removeEventListener(Event.INIT, _onPanelAdded);
+		cast(panel, IEventDispatcher).removeEventListener(UIEvent.ADDED_TO_STAGE, _onPanelAdded);
+		cast(panel, IEventDispatcher).removeEventListener(UIEvent.INIT, _onPanelAdded);
 		var panelIndex:Int = Lambda.indexOf(_panels, panel);
 		var button:Button = _buttons[panelIndex];
 	

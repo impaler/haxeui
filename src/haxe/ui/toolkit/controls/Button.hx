@@ -4,6 +4,7 @@ import flash.events.MouseEvent;
 import haxe.ui.toolkit.core.interfaces.IFocusable;
 import haxe.ui.toolkit.core.Screen;
 import haxe.ui.toolkit.core.StateComponent;
+import haxe.ui.toolkit.events.UIEvent;
 import haxe.ui.toolkit.layout.Layout;
 import haxe.ui.toolkit.style.Style;
 
@@ -28,6 +29,10 @@ class Button extends StateComponent implements IFocusable {
 	 Button state is "down"
 	 **/
 	public static inline var STATE_DOWN = "down";
+	/**
+	 Button state is "disabled"
+	 **/
+	public static inline var STATE_DISABLED = "disabled";
 	
 	private var _allowFocus:Bool = true;
 	private var _remainPressed:Bool = false; // if the button should remain pressed even when the mouse is out
@@ -105,6 +110,22 @@ class Button extends StateComponent implements IFocusable {
 		addEventListener(MouseEvent.MOUSE_OUT, _onMouseOut);
 		addEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
 		addEventListener(MouseEvent.CLICK, _onMouseClick);
+		
+		applyStyle();
+	}
+	
+	private override function set_disabled(value:Bool):Bool {
+		super.set_disabled(value);
+		if (value == true) {
+			sprite.buttonMode = false;
+			sprite.useHandCursor = false;
+			//state = STATE_DISABLED;
+		} else {
+			sprite.buttonMode = true;
+			sprite.useHandCursor = true;
+			//state = STATE_NORMAL;
+		}
+		return value;
 	}
 	
 	//******************************************************************************************
@@ -167,13 +188,16 @@ class Button extends StateComponent implements IFocusable {
 				state = STATE_NORMAL;
 			}
 			
-			if (_remainPressed == true) {
+			//if (_remainPressed == true) {
 				Screen.instance.removeEventListener(MouseEvent.MOUSE_UP, _onMouseUp);
-			}
+			//}
 		}
 	}
 	
 	private function _onMouseClick(event:MouseEvent):Void {
+		if (_icon != null && _icon.hitTest(event.stageX, event.stageY)) {
+			dispatchEvent(new UIEvent(UIEvent.GLYPH_CLICK));
+		}
 		if (_toggle == true && _allowSelection == true) {
 			selected = !selected;
 			#if !android
@@ -188,7 +212,15 @@ class Button extends StateComponent implements IFocusable {
 	// IState
 	//******************************************************************************************
 	private override function get_states():Array<String> {
-		return [STATE_NORMAL, STATE_OVER, STATE_DOWN];
+		return [STATE_NORMAL, STATE_OVER, STATE_DOWN, STATE_DISABLED];
+	}
+	
+	private override function set_state(value:String):String {
+		super.set_state(value);
+		if (value == STATE_DOWN) {
+			_down = true;
+		}
+		return value;
 	}
 	
 	//******************************************************************************************
@@ -324,7 +356,7 @@ class Button extends StateComponent implements IFocusable {
 				var cx:Float = _label.width + _layout.padding.left + _layout.padding.right;
 				if (_icon != null) {
 					if (buttonLayout.iconPosition == "farLeft" || buttonLayout.iconPosition == "left" || buttonLayout.iconPosition == "right" || buttonLayout.iconPosition == "farRight") {
-						cx += _icon.width + _layout.padding.left + _layout.padding.right;
+						cx += (_icon.width  + _layout.spacingX) * 2;
 					}
 				}
 				width = cx;

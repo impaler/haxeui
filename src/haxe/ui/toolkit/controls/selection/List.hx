@@ -6,6 +6,7 @@ import flash.filters.DropShadowFilter;
 import flash.geom.Rectangle;
 import haxe.ui.toolkit.containers.ListView;
 import haxe.ui.toolkit.controls.Button;
+import haxe.ui.toolkit.core.interfaces.IEventDispatcher;
 import haxe.ui.toolkit.core.PopupManager;
 import haxe.ui.toolkit.core.Toolkit;
 import haxe.ui.toolkit.data.ArrayDataSource;
@@ -56,6 +57,11 @@ class List extends Button implements IDataComponent {
 				_method = _style.selectionMethod;
 			}
 		}
+	}
+	
+	private override function initialize():Void {
+		super.initialize();
+		autoSize = false;
 	}
 	
 	private override function _onMouseClick(event:MouseEvent):Void {
@@ -118,7 +124,7 @@ class List extends Button implements IDataComponent {
 				_list = new ListView();
 				_list.addEventListener(Event.CHANGE, _onListChange);
 				_list.dataSource = _dataSource;
-				_list.addEventListener(Event.ADDED_TO_STAGE, function(e) {
+				_list.content.addEventListener(Event.ADDED_TO_STAGE, function(e) {
 					showList();
 				});
 				root.addChild(_list);
