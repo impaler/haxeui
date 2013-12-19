@@ -19,6 +19,7 @@ class Style {
 	private var _backgroundImageScale9:Rectangle;
 	private var _backgroundImageRect:Rectangle;
 	private var _backgroundColor:Int = -1;
+	private var _backgroundAlpha:Float = 1;
 	private var _backgroundColorGradientEnd:Int = -1;
 	private var _borderColor:Int = -1;
 	private var _borderSize:Int = -1;
@@ -57,6 +58,7 @@ class Style {
 	public var backgroundImageScale9(get, set):Rectangle;
 	public var backgroundImageRect(get, set):Rectangle;
 	public var backgroundColor(get, set):Int;
+	public var backgroundAlpha(get, set):Float;
 	public var backgroundColorGradientEnd(get, set):Int;
 	public var borderColor(get, set):Int;
 	public var borderSize(get, set):Int;
@@ -234,6 +236,21 @@ class Style {
 	private function set_backgroundColor(value:Int):Int {
 		if (value != _backgroundColor) {
 			_backgroundColor = value;
+			apply();
+		}
+		return value;
+	}
+
+	private function get_backgroundAlpha():Float {
+		if (hasDynamicValue("backgroundAlpha")) {
+			return getDynamicValue("backgroundAlpha");
+		}
+		return _backgroundAlpha;
+	}
+
+	private function set_backgroundAlpha(value:Float):Float {
+		if (value != _backgroundAlpha) {
+			_backgroundAlpha = value;
 			apply();
 		}
 		return value;
@@ -799,6 +816,7 @@ class Style {
 		}
 		if (with._backgroundColorGradientEnd != -1) this._backgroundColorGradientEnd = with._backgroundColorGradientEnd;
 		if (with._borderColor != -1) this._borderColor = with._borderColor;
+		if (with._backgroundAlpha != 1) this._backgroundAlpha = with._backgroundAlpha;
 		if (with._borderSize != -1) this._borderSize = with._borderSize;
 		if (with._color != -1) this._color = with._color;
 		if (with._paddingLeft != -1) this._paddingLeft = with._paddingLeft;

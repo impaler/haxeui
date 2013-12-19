@@ -65,7 +65,7 @@ class StyleHelper {
 													InterpolationMethod.LINEAR_RGB, 
 													0);
 				} else {
-					g.beginFill(style.backgroundColor);
+					g.beginFill(style.backgroundColor, style.backgroundAlpha);
 				}
 			}
 			
